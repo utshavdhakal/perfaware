@@ -71,9 +71,21 @@ int main(int argc, char* argv[]) {
 	}
 
 	byte buffer[2];
-	assert(fread(buffer, 2, 1, file)==1);
 
-	disassemble(buffer);
+	while (1) {
+		fread(buffer, 2, 1, file);
+
+		if (feof(file)) {
+			break;
+		}
+
+		if (ferror(file)) {
+			printf("File Read Error!\n");
+			exit(-1);
+		}
+
+		disassemble(buffer);
+	}
 
 	fclose(file);
 	return 0;
