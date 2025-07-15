@@ -5,10 +5,11 @@
 
 typedef unsigned char byte;
 
-void read_byte(FILE* file, byte* value) {
+void read_byte(FILE* file, char* value) {
 	fread(value, sizeof(byte), 1, file);
 	
 	if (feof(file)) {
+		printf("EOF!\n");
 		exit(-1);
 	}
 
@@ -45,8 +46,37 @@ void disassemble(FILE* file) {
 
 	while(1) {
 		read_byte(file, &first);
+
+		byte OPCODE = (first & 0b11110000) >> 4;
+
+		if (OPCODE == 0b1011) {
+			// Immediate to register
+
+			byte WIDTH = (first & 0b00001000) >> 3;
+			char* REG = decode_register(first & 0b00000111, WIDTH);
+
+			if (WIDTH == 0) {
+				char DATA;
+				read_byte(file, &DATA);
+
+				printf("mov %s, %d\n", REG, DATA);
+			}
+			
+			else if (WIDTH == 1) {
+				char DATA[2];
+
+				read_byte(file, &DATA[0]);
+				read_byte(file, &DATA[1]);
+
+				short VAL = *((short*) &DATA);
+				printf("mov %s, %hi\n", REG, VAL);
+			}
+
+			continue;
+		}
 		
-		byte OPCODE = (first & 0b11111100) >> 2;
+		OPCODE = (first & 0b11111100) >> 2;
+
 		switch(OPCODE) {
 
 			// Copy from R to R
