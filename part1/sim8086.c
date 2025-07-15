@@ -1,55 +1,84 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include "util.h"
 
-typedef char byte;
+typedef unsigned char byte;
+
+void read_byte(FILE* file, byte* value) {
+	fread(value, sizeof(byte), 1, file);
+	
+	if (feof(file)) {
+		exit(-1);
+	}
+
+	if (ferror(file)) {
+		printf("File Read Error!\n");
+		exit(-1);
+	}
+
+}
 
 char* decode_register(byte reg, byte width) {
 	switch(reg) {
 		case 0b000:
-			return width == 0 ? "AL" : "AX";
+			return width == 0 ? "al" : "ax";
 		case 0b001:
-			return width == 0 ? "CL" : "CX";
+			return width == 0 ? "cl" : "cx";
 		case 0b010:
-			return width == 0 ? "DL" : "DX";
+			return width == 0 ? "dl" : "dx";
 		case 0b011:
-			return width == 0 ? "BL" : "BX";
+			return width == 0 ? "bl" : "bx";
 		case 0b100:
-			return width == 0 ? "AH" : "SP";
+			return width == 0 ? "ah" : "sp";
 		case 0b101:
-			return width == 0 ? "CH" : "BP";
+			return width == 0 ? "ch" : "bp";
 		case 0b110:
-			return width == 0 ? "DH" : "SI";
+			return width == 0 ? "dh" : "si";
 		case 0b111:
-			return width == 0 ? "BH" : "DI";
+			return width == 0 ? "bh" : "di";
 	}
 }
 
-void disassemble(byte *buffer) {
-	byte opcode = (buffer[0] & 0b11111100) >> 2;
-	byte dir = (buffer[0] & 0b00000010) >> 1;
-	byte width = (buffer[0] & 0b00000001);
-	byte mode = (buffer[1] & 0b11000000) >> 6;
-	byte opr1 = (buffer[1] & 0b00111000) >> 3;
-	byte opr2 = (buffer[1] & 0b00000111);
+void disassemble(FILE* file) {
+	byte first;
 
-	switch(opcode) {
+	while(1) {
+		read_byte(file, &first);
 		
-		case 0b100010:
-			printf("MOV ");
-	}
+		byte OPCODE = (first & 0b11111100) >> 2;
+		switch(OPCODE) {
 
-	switch(mode) {
+			// Copy from R to R
+			// Copy from R to M
+			// Copy from M to R
 
-		case 0b11:
-			char *opr1_reg = decode_register(opr1, width);
-			char *opr2_reg = decode_register(opr2, width);
+			case 0b100010: {
+				byte second;
+				read_byte(file, &second);
 
-			if (dir == 0) {
-				printf(" %s, %s\n", opr2_reg, opr1_reg);
-			} else {
-				printf(" %s, %s\n", opr1_reg, opr2_reg);
+				byte MOD = second >> 6;
+				byte WIDTH = first & 0b00000001;
+
+				// Register to Register
+
+				if (MOD == 0b11) {
+					char* reg1 = decode_register((second >> 3) & 0b00000111, WIDTH);
+					char* reg2 = decode_register(second & 0b00000111, WIDTH);
+
+					byte DIR = first >> 1 & 0b00000001;
+
+					if (DIR == 0) {
+						printf("mov %s, %s\n", reg2, reg1);
+					}
+
+					else if (DIR == 1) {
+						printf("mov %s, %s\n", reg1, reg2);
+					}
+				}
 			}
+				
+		}
 	}
 }
 
@@ -70,22 +99,7 @@ int main(int argc, char* argv[]) {
 		exit(-1);
 	}
 
-	byte buffer[2];
-
-	while (1) {
-		fread(buffer, 2, 1, file);
-
-		if (feof(file)) {
-			break;
-		}
-
-		if (ferror(file)) {
-			printf("File Read Error!\n");
-			exit(-1);
-		}
-
-		disassemble(buffer);
-	}
+	disassemble(file);
 
 	fclose(file);
 	return 0;
