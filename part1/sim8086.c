@@ -9,7 +9,7 @@ void read_byte(FILE* file, char* value) {
 	fread(value, sizeof(byte), 1, file);
 	
 	if (feof(file)) {
-		printf("EOF!\n");
+		printf("; EOF!\n");
 		exit(-1);
 	}
 
@@ -89,22 +89,127 @@ void disassemble(FILE* file) {
 
 				byte MOD = second >> 6;
 				byte WIDTH = first & 0b00000001;
+				byte DIR = first >> 1 & 0b00000001;
 
-				// Register to Register
+
+				// Register Mode (No Displacement)
 
 				if (MOD == 0b11) {
 					char* reg1 = decode_register((second >> 3) & 0b00000111, WIDTH);
 					char* reg2 = decode_register(second & 0b00000111, WIDTH);
 
-					byte DIR = first >> 1 & 0b00000001;
-
-					if (DIR == 0) {
+					if (DIR == 0)
 						printf("mov %s, %s\n", reg2, reg1);
+					else if (DIR == 1)
+						printf("mov %s, %s\n", reg1, reg2);
+				}
+
+				// Memory Mode (No Displacement)
+
+				else if (MOD == 0b00) {
+					char* REG = decode_register((second >> 3) & 0b00000111, WIDTH);
+					char* MEM = (char*) malloc(20);
+
+					switch (second & 0b00000111) {
+						case 0b000:
+							MEM = "bx + si";
+							break;
+						case 0b001:
+							MEM = "bx + di";
+							break;
+						case 0b010:
+							MEM = "bp + si";
+							break;
+						case 0b011:
+							MEM = "bp + di";
+							break;
+						case 0b100:
+							MEM = "si";
+							break;
+						case 0b101:
+							MEM = "di";
+							break;
+						case 0b110:
+							MEM = "DIRECT ADDRESS?";
+							break;
+						case 0b111:
+							MEM = "bx";
+							break;
 					}
 
-					else if (DIR == 1) {
-						printf("mov %s, %s\n", reg1, reg2);
+					if (DIR == 0)
+						printf("mov [%s], %s\n", MEM, REG);
+					else if (DIR == 1)
+						printf("mov %s, [%s]\n", REG, MEM);
+				}
+
+				// Memory Mode (8-bit Displacement)
+
+				else if (MOD == 0b001) {
+					char* REG = decode_register((second >> 3) & 0b00000111, WIDTH);
+ 					char* MEM = (char*) malloc(20);
+
+					char DISP;
+
+
+					switch (second & 0b00000111) {
+						case 0b110:
+
+							// BP + D8
+
+							read_byte(file, &DISP);
+
+							if (DISP > 0) sprintf(MEM, "bp + %d", DISP);
+							else MEM = "bp";
+
+							break;
+
+						case 0b000:
+
+							// BX + SI + D8
+
+							read_byte(file, &DISP);
+
+							if (DISP > 0) sprintf(MEM, "bx + si + %d", DISP);
+							else MEM = "bx + si";
+
+							break;
 					}
+
+					if (DIR == 0)
+						printf("mov [%s], %s\n", MEM, REG);
+					else if (DIR == 1)
+						printf("mov %s, [%s]\n", REG, MEM);
+				}
+
+				// Memory Mode (16-bit Displacement)
+
+				else if (MOD == 0b010) {
+					char* REG = decode_register((second >> 3) & 0b00000111, WIDTH);
+ 					char* MEM = (char*) malloc(20);
+
+					char DISP[2];
+
+					switch (second & 0b00000111) {
+						case 0b000:
+
+							// BX + SI + D16
+
+							read_byte(file, &DISP[0]);
+							read_byte(file, &DISP[1]);
+
+							short VAL = *((short*) &DISP);
+
+							if (DISP > 0) sprintf(MEM, "bx + si + %hi", *((short*) &DISP));
+							else MEM = "bx + si";
+
+							break;
+					}
+
+					if (DIR == 0)
+						printf("mov [%s], %s\n", MEM, REG);
+					else if (DIR == 1)
+						printf("mov %s, [%s]\n", REG, MEM);
 				}
 			}
 				
