@@ -10,7 +10,10 @@
             "request": "launch",
             "program": "${fileDirname}\\${fileBasenameNoExtension}",
             "args": [
+                // "${fileDirname}/listing_0037_single_register_mov",
+                // "${fileDirname}/listing_0038_many_register_mov",
                 "${fileDirname}/listing_0039_more_movs",
+                // "${fileDirname}/listing_0040_challenge_movs",
             ],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
